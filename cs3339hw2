@@ -1,0 +1,82 @@
+#include <iostream>
+#include <bitset>
+#include <cstring>
+#include <cstdint>
+
+using namespace std;
+
+//float -> bits
+uint32_t toBits(float f) {
+    uint32_t b;
+    //copy bits from the memory location of f and paste them into the mem location of b
+    memcpy(&b, &f, sizeof(float));
+    return b;
+}
+
+//bits -> float
+float fromBits(uint32_t b) {
+    float f;
+    //copy bits from the memory location of b and paste them into the mem location of f
+    memcpy(&f, &b, sizeof(float));
+    return f;
+}
+
+//extract unbiased exponent. this will give us just the exponent in bit format
+int getExp(uint32_t bits) {
+    return ((bits >> 23) & 0xFF) - 127;
+}
+
+//float = 2^E (fraction = 0)
+float makePowerOfTwo(int E) {
+    uint32_t bits = 0;
+    uint32_t exp = (E + 127) & 0xFF;
+    bits |= (exp << 23);
+    return fromBits(bits);
+}
+
+int main(int argc, char* argv[]) {
+
+	//ensure we have exactly 3 arguemtns from the user: our program, loopbound, and the increment
+    if (argc != 3) {
+        cout << "Error: Exactly two arguments required." << endl;
+        return 1;
+    }
+	
+	//take what the user entered and convert from a string to a float
+    float loopBound = stof(argv[1]);
+    float increment = stof(argv[2]);
+	//convert our floats to raw bits
+    uint32_t loopBits = toBits(loopBound);
+    uint32_t incBits  = toBits(increment);
+
+    //print in IEEE format
+    cout << bitset<32>(loopBits) << endl;
+    cout << bitset<32>(incBits) << endl;
+	//edge case where the increment is 0
+    if (increment == 0.0f) {
+        cout << "No overflow!" << endl;
+        return 0;
+    }
+
+    //exponent of increment
+    int E_inc = getExp(incBits);
+
+    //the threshold exponent
+    int E_thresh = E_inc + 23;
+
+    //construct threshold
+    float threshold = makePowerOfTwo(E_thresh);
+    uint32_t threshBits = toBits(threshold);
+
+    //check for overflow!!!
+    if (threshold > loopBound) {
+        cout << "No overflow!" << endl;
+    } else {
+        cout << "Warning: Possible overflow!" << endl;
+        cout << "Overflow threshold:" << endl;
+        cout << threshold << endl;
+        cout << bitset<32>(threshBits) << endl;
+    }
+
+    return 0;
+}
